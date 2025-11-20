@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autoimmune Insight | Symptom Checker</title>
+    <!-- Tailwind CSS for mobile-first, responsive design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa; /* Light Gray Background */
+        }
+        .container-card {
+            max-width: 95%;
+            margin: 2rem auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .symptom-item {
+            cursor: pointer;
+            transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            background-color: white;
+            border: 1px solid #e5e7eb;
+        }
+        .symptom-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .selected {
+            background-color: #e0f2fe; /* Light Blue */
+            border-color: #0c4a6e; /* Darker Blue Border */
+            font-weight: 600;
+        }
+        .result-box {
+            border-left: 4px solid;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div class="container-card bg-white rounded-xl p-4 md:p-8">
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <div class="flex items-center justify-center space-x-3 mb-2">
+                <i class="fa-solid fa-house-chimney-medical text-4xl text-blue-700"></i>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900">
+                    Quick Autoimmune Symptom Checker <span class="text-xs text-red-500 font-bold ml-1">BETA V1.1</span>
+                </h1>
+            </div>
+            <p class="text-sm text-gray-500 max-w-lg mx-auto">A preliminary screening tool to help identify patterns in your symptoms based on common autoimmune profiles.</p>
+            
+            <!-- Disclaimer Box -->
+            <div class="mt-4 p-3 bg-red-100 border border-red-400 rounded-lg text-red-700 text-sm font-medium">
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+                DISCLAIMER: This is NOT a diagnostic tool. Always consult a qualified healthcare professional for proper diagnosis and treatment.
+            </div>
+        </header>
+
+        <!-- Symptom Selection Area -->
+        <section class="mb-8">
+            <h2 class="text-xl font-bold mb-3 text-gray-700">1. Select Your Symptoms</h2>
+            
+            <!-- Search Bar -->
+            <div class="relative mb-4">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="symptomSearch" placeholder="Search symptoms (e.g., Joint Pain)" class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Selected Symptoms Indicator -->
+            <div class="flex justify-between items-center mb-3">
+                <p class="text-sm font-medium text-gray-600">Selected: <span id="selectedCount" class="text-blue-700 font-bold">0</span></p>
+                <button onclick="resetApp()" class="text-sm text-red-600 hover:text-red-800 font-medium transition duration-150">
+                    <i class="fa-solid fa-rotate-right mr-1"></i>Reset
+                </button>
+            </div>
+
+            <!-- Symptom List Container -->
+            <div id="symptomList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Symptoms will be injected here by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Analysis Button -->
+        <button id="analyzeButton" onclick="runAnalysis()" class="w-full py-3 bg-blue-700 text-white font-semibold rounded-lg hover:bg-blue-800 transition duration-300 shadow-md shadow-blue-300 disabled:bg-gray-400 disabled:shadow-none" disabled>
+            Analyze Symptoms (Requires 2+ Selected)
+        </button>
+
+        <!-- Results Area -->
+        <section id="resultsSection" class="mt-8 hidden">
+            <h2 class="text-xl font-bold mb-4 text-gray-700">2. Analysis Results</h2>
+            <div id="analysisOutput" class="space-y-4">
+                <!-- Results will be injected here by JavaScript -->
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // --- DATA SETUP (Derived from your Python input) ---
+        const SYMPTOMS = {
+            "1": "Persistent Fatigue", "2": "Joint Pain/Swelling", "3": "Morning Stiffness",
+            "4": "Chronic Diarrhea/Abdominal Pain", "5": "Unintentional Weight Loss",
+            "6": "Unintentional Weight Gain", "7": "Excessive Thirst/Urination",
+            "8": "Facial Rash (Butterfly)", "9": "Scaly Skin Patches",
+            "10": "Dry Eyes/Mouth", "11": "Rapid Heart Rate/Palpitations",
+            "12": "Heat or Cold Sensitivity", "13": "Difficulty Walking/Coordination",
+            "14": "Numbness/Tingling in Limbs", "15": "Vision Problems",
+            "16": "Muscle Weakness", "17": "Recurring Low-Grade Fever",
+            "18": "Constipation", "19": "Dry Skin/Brittle Hair"
+        };
+        
+        const DISEASE_PROFILES = {
+            "Rheumatoid Arthritis (RA)": ["2", "3", "1", "17"],
+            "Systemic Lupus Erythematosus (Lupus)": ["2", "8", "17", "1", "15"],
+            "Multiple Sclerosis (MS)": ["1", "13", "14", "15", "16"],
+            "Type 1 Diabetes": ["7", "5", "1", "15"],
+            "Graves' Disease (Hyperthyroidism)": ["5", "11", "12", "1"],
+            "Hashimoto's Thyroiditis (Hypothyroidism)": ["6", "12", "18", "19", "1"],
+            "Psoriasis/Psoriatic Arthritis (PsA)": ["9", "2", "3"],
+            "Inflammatory Bowel Disease (IBD)": ["4", "5", "1", "17"],
+        };
+
+        const MIN_MATCHES = 2;
+        
+        // --- STATE AND DOM ELEMENTS ---
+        let selectedSymptomKeys = new Set();
+        const symptomListEl = document.getElementById('symptomList');
+        const selectedCountEl = document.getElementById('selectedCount');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const searchInput = document.getElementById('symptomSearch');
+        const resultsSection = document.getElementById('resultsSection');
+        const analysisOutputEl = document.getElementById('analysisOutput');
+
+        // --- CORE FUNCTIONS ---
+
+        function renderSymptomList(filterText = '') {
+            symptomListEl.innerHTML = '';
+            const filter = filterText.toLowerCase();
+
+            Object.entries(SYMPTOMS).forEach(([key, description]) => {
+                if (description.toLowerCase().includes(filter)) {
+                    const isSelected = selectedSymptomKeys.has(key);
+                    const item = document.createElement('div');
+                    item.className = `symptom-item p-3 rounded-lg text-sm flex justify-between items-center ${isSelected ? 'selected' : ''}`;
+                    item.setAttribute('data-key', key);
+                    item.onclick = () => toggleSymptom(key);
+                    
+                    item.innerHTML = `
+                        <span>${description}</span>
+                        <i class="fa-solid ${isSelected ? 'fa-check-circle text-blue-700' : 'fa-circle text-gray-300'}"></i>
+                    `;
+                    symptomListEl.appendChild(item);
+                }
+            });
+        }
+
+        function updateUI() {
+            selectedCountEl.textContent = selectedSymptomKeys.size;
+            
+            // Enable/Disable Analyze button
+            analyzeButton.disabled = selectedSymptomKeys.size < MIN_MATCHES;
+
+            // Re-render the list to update checkmarks
+            renderSymptomList(searchInput.value);
+        }
+
+        function toggleSymptom(key) {
+            if (selectedSymptomKeys.has(key)) {
+                selectedSymptomKeys.delete(key);
+            } else {
+                selectedSymptomKeys.add(key);
+            }
+            updateUI();
+        }
+
+        function analyzeSymptoms() {
+            const matches = [];
+            
+            for (const [disease, required_symptoms] of Object.entries(DISEASE_PROFILES)) {
+                let matched_count = 0;
+                let matched_keys = new Set();
+                
+                // Calculate intersection
+                required_symptoms.forEach(requiredKey => {
+                    if (selectedSymptomKeys.has(requiredKey)) {
+                        matched_count++;
+                        matched_keys.add(requiredKey);
+                    }
+                });
+
+                if (matched_count >= MIN_MATCHES) {
+                    matches.push({ disease, count: matched_count, matchedKeys: matched_keys });
+                }
+            }
+            
+            // Sort by match count (descending)
+            matches.sort((a, b) => b.count - a.count);
+            return matches;
+        }
+
+        function runAnalysis() {
+            resultsSection.classList.remove('hidden');
+            analysisOutputEl.innerHTML = '';
+            
+            const potentialMatches = analyzeSymptoms();
+            
+            if (potentialMatches.length > 0) {
+                analysisOutputEl.innerHTML = `<p class="text-base text-gray-800 mb-4 font-semibold">Found ${potentialMatches.length} potential matches based on your selection:</p>`;
+
+                potentialMatches.forEach(match => {
+                    const matchedNames = Array.from(match.matchedKeys).map(key => SYMPTOMS[key]);
+                    
+                    const box = document.createElement('div');
+                    box.className = `result-box p-4 rounded-lg bg-white shadow border-blue-500`;
+                    box.innerHTML = `
+                        <h3 class="text-lg font-bold text-gray-900">${match.disease}</h3>
+                        <p class="text-sm font-medium text-gray-600 mb-2">Matched <span class="text-blue-700">${match.count}</span> key symptom(s).</p>
+                        <div class="space-y-1">
+                            ${matchedNames.map(name => 
+                                `<p class="text-xs text-green-700 flex items-center"><i class="fa-solid fa-check-circle mr-2"></i>${name}</p>`
+                            ).join('')}
+                        </div>
+                    `;
+                    analysisOutputEl.appendChild(box);
+                });
+            } else {
+                analysisOutputEl.innerHTML = `
+                    <div class="p-6 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-700 font-medium">
+                        Your symptom combination did not strongly match the characteristic profile of the common autoimmune diseases in our database. Please consult a doctor for a professional evaluation.
+                    </div>
+                `;
+            }
+        }
+
+        function resetApp() {
+            selectedSymptomKeys.clear();
+            searchInput.value = '';
+            resultsSection.classList.add('hidden');
+            analysisOutputEl.innerHTML = '';
+            updateUI();
+        }
+
+        // --- EVENT LISTENERS ---
+        searchInput.addEventListener('input', (e) => {
+            renderSymptomList(e.target.value);
+        });
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            renderSymptomList();
+            updateUI();
+        };
+
+    </script>
+</body>
+</html>
